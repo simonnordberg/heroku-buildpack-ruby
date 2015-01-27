@@ -93,6 +93,7 @@ class LanguagePack::Ruby < LanguagePack::Base
         post_bundler
         create_database_yml
         install_binaries
+        run_heroku_deploy_rake_task
         run_assets_precompile_rake_task
       end
       super
@@ -760,6 +761,23 @@ params = CGI.parse(uri.query || "")
       msg << "https://devcenter.heroku.com/articles/pre-provision-database\n"
     end
     error msg
+  end
+
+  def run_heroku_deploy_rake_task
+    instrument 'ruby.run_heroku_deploy_rake_task' do
+
+      deploy_task = rake.task("deploy:heroku_deploy")
+      return true unless deploy_task.is_defined?
+
+      topic "Running Heroku deploy rake task"
+      deploy_task.invoke(env: rake_env)
+      if deploy_task.success?
+        puts "Heroku deploy task completed (#{"%.2f" % deploy_task.time}s)"
+      else
+        log "heroku deploy task", :status => "failure"
+        error "Heroku deploy rake task failed.\n"
+      end
+    end
   end
 
   def bundler_cache
